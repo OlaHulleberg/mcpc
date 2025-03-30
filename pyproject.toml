@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcpc"
+version = "0.1.0"
+description = "MCP Callback Protocol extension for enabling asynchronous tool callbacks and streaming updates from MCP clients"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Ola Hulleberg", email = "ola@hulleberg.net"},
+]
+keywords = ["mcp", "callbacks", "async", "protocol", "streaming"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "mcp[cli]>=1.6.0",
+    "pydantic>=2.0.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/OlaHulleberg/mcpc"
+"Bug Tracker" = "https://github.com/OlaHulleberg/mcpc/issues"
+"Documentation" = "https://github.com/OlaHulleberg/mcpc#readme"
+
+[dependency-groups]
+dev = [
+    "build>=1.2.2.post1",
+    "twine>=6.1.0",
+]
