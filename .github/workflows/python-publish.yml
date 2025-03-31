@@ -11,6 +11,7 @@ name: Upload Python Package
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -29,7 +30,7 @@ jobs:
         run: |
           # NOTE: put your own distribution build steps here.
           uv sync
-          uv python -m build
+          uv run python -m build
 
       - name: Upload distributions
         uses: actions/upload-artifact@v4
@@ -44,7 +45,7 @@ jobs:
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
-      
+
     environment:
       name: pypi
       url: https://pypi.org/p/mcpc
