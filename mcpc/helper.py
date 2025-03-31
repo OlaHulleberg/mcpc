@@ -184,11 +184,10 @@ class MCPCHelper:
             
             # Serialize
             json_message = JSONRPCMessage(jsonrpc_response)
-            serialized = json_message.model_dump_json()
             
             # Route to the appropriate transport
             if self.transport_type == "stdio":
-                return await self._send_direct(serialized)
+                return await self._send_direct(json_message)
             elif self.transport_type == "sse":
                 raise NotImplementedError("SSE transport is not yet implemented")
             else:
@@ -198,7 +197,7 @@ class MCPCHelper:
             logger.error(f"Error preparing message for send: {e}")
             return False
 
-    async def _send_direct(self, message: str) -> bool:
+    async def _send_direct(self, message: JSONRPCMessage) -> bool:
         """
         Send a pre-formatted JSON-RPC message directly via stdout.
         
@@ -210,7 +209,7 @@ class MCPCHelper:
         """
         try:
             # Write to stdout and flush
-            sys.stdout.write(message + "\n")
+            sys.stdout.write(message.model_dump_json() + "\n")
             sys.stdout.flush()
             
             logger.debug(f"Sent direct message: {message[:100]}...")
