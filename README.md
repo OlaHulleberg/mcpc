@@ -14,6 +14,14 @@ MCPC extends the [MCP protocol](https://github.com/modelcontextprotocol/python-s
 
 ### Installation
 
+UV is the preferred package manager for installing MCPC due to its speed and reliability, but you can use any of your favorite package managers (pip, poetry, conda, etc.) to install and manage MCPC.
+
+```bash
+uv add mcpc
+```
+
+For projects using traditional pip:
+
 ```bash
 pip install mcpc
 ```
