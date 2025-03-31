@@ -209,10 +209,11 @@ class MCPCHelper:
         """
         try:
             # Write to stdout and flush
-            sys.stdout.write(message.model_dump_json() + "\n")
+            serialized = message.model_dump_json()
+            sys.stdout.write(serialized + "\n")
             sys.stdout.flush()
             
-            logger.debug(f"Sent direct message: {message[:100]}...")
+            logger.debug(f"Sent direct message: {serialized[:100]}...")
             return True
             
         except Exception as e:
