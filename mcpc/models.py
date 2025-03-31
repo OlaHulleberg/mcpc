@@ -12,10 +12,10 @@ class MCPCInformation(BaseModel):
 
 class MCPCMessage(BaseModel):
     """A message in the MCPC protocol."""
-    session_id: str
+    type: Literal["task", "server_event"] = "task"  # Type of message
+    event: str
+    session_id: str | None = None
     task_id: str | None = None
     tool_name: str | None = None
     result: Any = None
-    event: str
-    type: Literal["task", "server_event"] = "task"  # Type of message
     protocol: str = "mcpc"  # Protocol identifier

@@ -33,15 +33,18 @@ from mcpc import MCPCHandler, MCPCMessage
 from mcp import ClientSession
 from mcp.client.stdio import stdio_client
 
-# Define your callback function
-async def my_mcpc_callback(mcpc_message: MCPCMessage) -> None:
+# Define your event listener function
+async def my_mcpc_listener(mcpc_message: MCPCMessage) -> None:
     print(f"Received MCPC message: {mcpc_message}")
     # Handle the message based on status
     if mcpc_message.type == "task" and mcpc_message.event == "complete":
         print(f"Task {mcpc_message.task_id} completed with result: {mcpc_message.result}")
 
-# Initialize the MCPC handler with your callback
-mcpc_handler = MCPCHandler("my-provider", my_mcpc_callback)
+# Initialize the MCPC handler
+mcpc_handler = MCPCHandler("my-provider")
+
+# Add your event listener for MCPCMessage
+mcpc_handler.add_event_listener(my_mcpc_listener)
 
 # In your connection logic:
 async def connect_to_mcp():
