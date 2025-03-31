@@ -292,7 +292,6 @@ MCPC is ideal for:
 
 - **Interactive AI Agents**: Chat with LLMs while tasks run in the background
 - **Data Processing**: Stream progress updates during large file processing
-- **ML Training**: Monitor model training progress in real-time
 - **Content Generation**: Receive partial results as they're generated
 - **Long-Running Operations**: Support for tasks that run indefinitely
 - **Distributed Systems**: Coordinate asynchronous operations across services
