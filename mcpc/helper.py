@@ -18,7 +18,7 @@ from mcp.types import TextContent, JSONRPCResponse, JSONRPCMessage
 from .models import MCPCMessage, MCPCInformation
 
 # Configure logging
-logger = logging.getLogger("mcpc-helpers")
+logger = logging.getLogger("mcpc")
 
 class MCPCHelper:
     """

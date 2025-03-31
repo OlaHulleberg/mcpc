@@ -14,7 +14,7 @@ import asyncio
 from .models import MCPCMessage
 
 # Configure logger
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("mcpc")
 
 class MCPCHandler:
     """Handler for MCP Callback Protocol (MCPC) messages."""
