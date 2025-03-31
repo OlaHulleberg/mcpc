@@ -29,7 +29,7 @@ class MCPCHelper:
         """Initialize an MCPC helper."""
         self.provider_name = provider_name
         self.background_tasks: Dict[str, Dict[str, Any]] = {}
-        logger.info(f"Initialized MCPC helper for provider: {provider_name}")
+        logger.debug(f"Initialized MCPC helper for provider: {provider_name}")
 
     def start_task(
         self,
@@ -64,7 +64,7 @@ class MCPCHelper:
             "status": "running"
         }
         thread.start()
-        logger.info(f"Started task {task_id}")
+        logger.debug(f"Started task {task_id}")
         
     def check_task(self, task_id: str) -> Dict[str, Any]:
         """Check task status and information."""
@@ -88,7 +88,7 @@ class MCPCHelper:
         """Remove task from registry."""
         if task_id in self.background_tasks:
             self.background_tasks.pop(task_id, None)
-            logger.info(f"Cleaned up task {task_id}")
+            logger.debug(f"Cleaned up task {task_id}")
 
     def create_message(
         self,
@@ -158,7 +158,7 @@ class MCPCHelper:
             sys.stdout.write(serialized + "\n")
             sys.stdout.flush()
             
-            logger.info(f"Sent direct message: {serialized[:100]}...")
+            logger.debug(f"Sent direct message: {serialized[:100]}...")
             return True
             
         except Exception as e:
