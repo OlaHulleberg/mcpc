@@ -128,9 +128,12 @@ from mcpc import MCPCHelper
 import asyncio
 import uuid
 
-# Initialize MCPC helper
+# Initialize MCPC helper with stdio transport
 PROVIDER_NAME = "my-processor"
-mcpc = MCPCHelper(PROVIDER_NAME)
+mcpc = MCPCHelper(PROVIDER_NAME, transport_type="stdio")
+
+# Or use SSE transport when available in future releases
+# mcpc = MCPCHelper(PROVIDER_NAME, transport_type="sse")  # Not yet implemented
 
 async def serve():
     """Run the MCP server with MCPC support."""
@@ -173,20 +176,20 @@ async def serve():
             async def process_data_task():
                 try:
                     # Send initial update
-                    await mcpc.send_direct(mcpc.create_message(
+                    await mcpc.send(mcpc.create_message(
                         type="task",
                         event="update",
                         tool_name="process_data",
                         session_id=session_id,
                         task_id=task_id,
                         result="Starting data processing"
-                    ).model_dump_json())
+                    ))
 
                     # Simulate work with progress updates
                     total_steps = 5
                     for step in range(1, total_steps + 1):
                         # Send progress update
-                        await mcpc.send_direct(mcpc.create_message(
+                        await mcpc.send(mcpc.create_message(
                             type="task",
                             event="update",
                             tool_name="process_data",
@@ -196,13 +199,13 @@ async def serve():
                                 "status": f"Processing step {step}/{total_steps}",
                                 "progress": step / total_steps * 100
                             }
-                        ).model_dump_json())
+                        ))
 
                         # Simulate work
                         await asyncio.sleep(1)
 
                     # Send completion message
-                    await mcpc.send_direct(mcpc.create_message(
+                    await mcpc.send(mcpc.create_message(
                         type="task",
                         event="complete",
                         tool_name="process_data",
@@ -213,18 +216,18 @@ async def serve():
                             "data_id": data_id,
                             "summary": "Processing completed successfully"
                         }
-                    ).model_dump_json())
+                    ))
 
                 except Exception as e:
                     # Send error message
-                    await mcpc.send_direct(mcpc.create_message(
+                    await mcpc.send(mcpc.create_message(
                         type="task",
                         event="failed",
                         tool_name="process_data",
                         session_id=session_id,
                         task_id=task_id,
                         result=f"Error: {str(e)}"
-                    ).model_dump_json())
+                    ))
 
                 finally:
                     # Clean up task
@@ -243,6 +246,11 @@ async def serve():
                 result=f"Started processing data_id={data_id}. Updates will stream in real-time."
             )
 
+            # Send the initial response message
+            await mcpc.send(response)
+
+            # Also return through the standard MCP channel
+            # This is optional but provides maximum compatibility
             return [TextContent(type="text", text=response.model_dump_json())]
 
     # Start the server
@@ -254,23 +262,76 @@ if __name__ == "__main__":
     asyncio.run(serve())
 ```
 
+## MCPC Messaging API
+
+The MCPC helper provides a simple API for creating and sending messages:
+
+```python
+# Initialize with the desired transport
+mcpc = MCPCHelper("my-provider", transport_type="stdio")  # "sse" planned for future releases
+
+# Create a task message
+task_message = mcpc.create_message(
+    type="task",
+    event="update",  # one of: created, update, complete, failed
+    tool_name="tool_name",
+    session_id="session_123",
+    task_id="task_456",
+    result="Processing data..."  # can be any JSON-serializable object
+)
+
+# Create a server event message
+server_event = mcpc.create_message(
+    type="server_event",
+    event="database_updated",
+    session_id="session_123",
+    result={"tables": ["users", "products"]}
+)
+
+# Or use the shorthand for server events
+server_event = mcpc.create_server_event(
+    session_id="session_123",
+    event="database_updated",
+    result={"tables": ["users", "products"]}
+)
+
+# Send a message through the configured transport
+await mcpc.send(task_message)
+```
+
+The `send` method:
+
+1. Validates required fields based on message type
+2. Prepares the JSON-RPC format
+3. Routes the message through the appropriate transport
+
+This abstracts away the complexity of the JSON-RPC protocol, allowing you to focus on your application logic.
+
 ## Advanced Server Features
 
 The `MCPCHelper` class provides additional features for complex server implementations:
 
-1. **Task Management**
+1. **Transport Options**
+
+   - Initialize with different transport types: `MCPCHelper(provider_name, transport_type="stdio")`
+   - Available transport types:
+     - `"stdio"`: Standard input/output transport (default)
+     - `"sse"`: Server-Sent Events transport (planned for future release, not yet implemented)
+
+2. **Task Management**
 
    - `start_task()`: Run a background task with automatic thread management
    - `check_task()`: Get the status of a running task
    - `stop_task()`: Request a task to stop gracefully
    - `cleanup_task()`: Remove a completed task from tracking
 
-2. **Message Creation**
+3. **Message Handling**
 
    - `create_message()`: Create standardized MCPC protocol messages
-   - `send_direct()`: Send messages directly to clients over stdout
+   - `create_server_event()`: Shorthand for creating server event messages
+   - `send()`: Send messages through the configured transport
 
-3. **Protocol Information**
+4. **Protocol Information**
    - `get_protocol_info()`: Return MCPC protocol compatibility information
 
 ## MCPC Message Structure

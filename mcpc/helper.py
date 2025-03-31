@@ -20,16 +20,30 @@ from .models import MCPCMessage, MCPCInformation
 # Configure logging
 logger = logging.getLogger("mcpc")
 
+# Define transport types
+TransportType = Literal["stdio", "sse"]
+
 class MCPCHelper:
     """
     Streamlined helper class for MCPC protocol implementation.
     """
     
-    def __init__(self, provider_name: str):
-        """Initialize an MCPC helper."""
+    def __init__(self, provider_name: str, transport_type: TransportType):
+        """
+        Initialize an MCPC helper.
+        
+        Args:
+            provider_name: Name of the provider
+            transport_type: Transport method to use for sending messages ("stdio" or "sse")
+        """
         self.provider_name = provider_name
+        self.transport_type = transport_type
         self.background_tasks: Dict[str, Dict[str, Any]] = {}
-        logger.debug(f"Initialized MCPC helper for provider: {provider_name}")
+        logger.debug(f"Initialized MCPC helper for provider: {provider_name} using {transport_type} transport")
+
+        # TODO: Implement SSE transport
+        if self.transport_type == "sse":
+            raise NotImplementedError("SSE transport is not yet implemented")
 
     def start_task(
         self,
@@ -137,11 +151,29 @@ class MCPCHelper:
             result=result
         )
 
-    async def send_direct(self, message: str) -> bool:
-        """Send message directly via stdout using JSON-RPC."""
+    async def send(self, message: MCPCMessage) -> bool:
+        """
+        Send an MCPC message through the appropriate transport.
+        Routes to the configured transport type (stdio or sse).
+        
+        Args:
+            message: The MCPCMessage to send
+            
+        Returns:
+            bool: Success status
+        """
+        # Ensure message has required fields
+        if message.type == "task" and not all([message.session_id, message.task_id, message.tool_name]):
+            raise ValueError("Task messages must include session_id, task_id, and tool_name")
+        elif message.type == "server_event" and not message.session_id:
+            raise ValueError("Server event messages must include session_id")
+            
         try:
+            # Convert message to JSON string
+            message_json = message.model_dump_json()
+            
             # Create message content and response
-            text_content = TextContent(text=message, type="text")
+            text_content = TextContent(text=message_json, type="text")
             mcpc_message = {"content": [text_content], "isError": False}
             
             jsonrpc_response = JSONRPCResponse(
@@ -150,15 +182,38 @@ class MCPCHelper:
                 result=mcpc_message
             )
             
-            # Serialize and send
+            # Serialize
             json_message = JSONRPCMessage(jsonrpc_response)
             serialized = json_message.model_dump_json()
             
+            # Route to the appropriate transport
+            if self.transport_type == "stdio":
+                return await self._send_direct(serialized)
+            elif self.transport_type == "sse":
+                raise NotImplementedError("SSE transport is not yet implemented")
+            else:
+                raise ValueError(f"Unsupported transport type: {self.transport_type}")
+            
+        except Exception as e:
+            logger.error(f"Error preparing message for send: {e}")
+            return False
+
+    async def _send_direct(self, message: str) -> bool:
+        """
+        Send a pre-formatted JSON-RPC message directly via stdout.
+        
+        Args:
+            message: The serialized JSON-RPC message to send
+            
+        Returns:
+            bool: Success status
+        """
+        try:
             # Write to stdout and flush
-            sys.stdout.write(serialized + "\n")
+            sys.stdout.write(message + "\n")
             sys.stdout.flush()
             
-            logger.debug(f"Sent direct message: {serialized[:100]}...")
+            logger.debug(f"Sent direct message: {message[:100]}...")
             return True
             
         except Exception as e:
