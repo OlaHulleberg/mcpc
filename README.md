@@ -29,15 +29,15 @@ pip install mcpc
 ### Client Usage
 
 ```python
-from mcpc import MCPCHandler
+from mcpc import MCPCHandler, MCPCMessage
 from mcp import ClientSession
 from mcp.client.stdio import stdio_client
 
 # Define your callback function
-async def my_mcpc_callback(mcpc_message):
+async def my_mcpc_callback(mcpc_message: MCPCMessage) -> None:
     print(f"Received MCPC message: {mcpc_message}")
     # Handle the message based on status
-    if mcpc_message.status == "task_complete":
+    if mcpc_message.type == "task" and mcpc_message.event == "complete":
         print(f"Task {mcpc_message.task_id} completed with result: {mcpc_message.result}")
 
 # Initialize the MCPC handler with your callback
@@ -89,6 +89,7 @@ MCPC addresses these limitations by enabling:
 - Real-time updates from background processes
 - Asynchronous notifications when operations complete
 - Support for indefinitely running tasks with streaming updates
+- LLMs can react to events and take action (e.g., "Database migration finished, let me verify the tables" or "File arrived, I'll start processing it")
 
 For example, you might start a data processing task, continue discussing with the LLM about the expected results, receive progress updates throughout, and get notified when processing completes - all without interrupting the conversation flow.
 
@@ -97,6 +98,7 @@ MCPC also enables powerful interactive patterns that weren't possible before in 
 - **Modifying running tasks**: You can adjust parameters or change the behavior of a task while it's running (e.g., "focus on this subset of data instead" or "I see that you're misunderstanding some relations, can you please parse the PDF first?")
 - **Tool-initiated prompts**: A tool can ask for clarification when it encounters ambiguity or needs additional input (e.g., "I found multiple matches, which one did you mean?" or "I need additional authorization to proceed")
 - **Conversation branching**: Start multiple background tasks and selectively respond to their updates while maintaining conversational context
+- **Proactive AI Actions**: Your MCP server can notify the LLM of events, allowing it to take action (e.g., "Database migration completed" → LLM runs verification query → "Table missing" → LLM starts targeted migration)
 
 These capabilities create a much more natural interaction model where tools feel like collaborative participants in the conversation rather than black-box functions.
 
@@ -169,11 +171,12 @@ async def serve():
                 try:
                     # Send initial update
                     await mcpc.send_direct(mcpc.create_message(
+                        type="task",
+                        event="update",
                         tool_name="process_data",
                         session_id=session_id,
                         task_id=task_id,
-                        result="Starting data processing",
-                        status="task_update"
+                        result="Starting data processing"
                     ).model_dump_json())
 
                     # Simulate work with progress updates
@@ -181,14 +184,15 @@ async def serve():
                     for step in range(1, total_steps + 1):
                         # Send progress update
                         await mcpc.send_direct(mcpc.create_message(
+                            type="task",
+                            event="update",
                             tool_name="process_data",
                             session_id=session_id,
                             task_id=task_id,
                             result={
                                 "status": f"Processing step {step}/{total_steps}",
                                 "progress": step / total_steps * 100
-                            },
-                            status="task_update"
+                            }
                         ).model_dump_json())
 
                         # Simulate work
@@ -196,6 +200,8 @@ async def serve():
 
                     # Send completion message
                     await mcpc.send_direct(mcpc.create_message(
+                        type="task",
+                        event="complete",
                         tool_name="process_data",
                         session_id=session_id,
                         task_id=task_id,
@@ -203,18 +209,18 @@ async def serve():
                             "status": "Complete",
                             "data_id": data_id,
                             "summary": "Processing completed successfully"
-                        },
-                        status="task_complete"
+                        }
                     ).model_dump_json())
 
                 except Exception as e:
                     # Send error message
                     await mcpc.send_direct(mcpc.create_message(
+                        type="task",
+                        event="failed",
                         tool_name="process_data",
                         session_id=session_id,
                         task_id=task_id,
-                        result=f"Error: {str(e)}",
-                        status="task_failed"
+                        result=f"Error: {str(e)}"
                     ).model_dump_json())
 
                 finally:
@@ -226,11 +232,12 @@ async def serve():
 
             # Return immediate response
             response = mcpc.create_message(
+                type="task",
+                event="created",
                 tool_name="process_data",
                 session_id=session_id,
                 task_id=task_id,
-                result=f"Started processing data_id={data_id}. Updates will stream in real-time.",
-                status="task_created"
+                result=f"Started processing data_id={data_id}. Updates will stream in real-time."
             )
 
             return [TextContent(type="text", text=response.model_dump_json())]
@@ -270,21 +277,54 @@ MCPC messages have the following structure:
 ```python
 class MCPCMessage:
     session_id: str      # Unique session identifier
-    task_id: str         # Unique task identifier
-    tool_name: str       # Name of the tool being called
+    task_id: str | None  # Unique task identifier (required for task messages)
+    tool_name: str | None # Name of the tool being called (required for task messages)
     result: Any = None   # Result or update data
-    status: str = "task_update"  # Status of the task
-    type: str = "mcpc"   # Protocol identifier
+    event: str          # Event type (restricted for task messages)
+    type: Literal["task", "server_event"] = "task"  # Type of message
+    protocol: str = "mcpc"  # Protocol identifier
 ```
 
-## Message Status Types
+### Example Server Event Message
 
-MCPC defines four standard callback states:
+```python
+# Server-initiated Kafka notification
+server_event = mcpc.create_server_event(
+    session_id="session123",
+    result={
+        "topic": "user_updates",
+        "event": "user_created",
+        "user_id": "user456",
+        "timestamp": "2024-03-20T10:00:00Z"
+    },
+    event="notification"  # Event must be explicitly specified
+)
+```
 
-- `task_created`: Initial acknowledgment when task begins
-- `task_update`: Progress updates during task execution
-- `task_complete`: Final result when task completes successfully
-- `task_failed`: Error information when task fails
+## Message Types and Events
+
+MCPC defines two types of messages with different event restrictions:
+
+### Task Messages
+
+- Type: `task`
+- Events:
+  - `created`: Initial acknowledgment when task begins
+  - `update`: Progress updates during task execution
+  - `complete`: Final result when task completes successfully
+  - `failed`: Error information when task fails
+
+### Server Event Messages
+
+- Type: `server_event`
+- Events: Any string is allowed, as they are not tied to a specific task lifecycle
+- Common examples include: `notification`, `alert`, `update`, `error`, etc.
+- **Proactive AI Responses**: Server events could trigger LLM actions:
+  - System events ("Database migration finished" → LLM verifies tables)
+  - File events ("PDF arrived" → LLM starts processing)
+  - Task results ("Analysis complete" → LLM reviews findings)
+  - State changes ("API updated" → LLM tests new endpoints)
+  - Any event that might require AI attention or action
 
 ## Use Cases
 
@@ -295,6 +335,9 @@ MCPC is ideal for:
 - **Content Generation**: Receive partial results as they're generated
 - **Long-Running Operations**: Support for tasks that run indefinitely
 - **Distributed Systems**: Coordinate asynchronous operations across services
+- **Proactive AI**: Let LLMs respond to events and take action automatically
+- **Automated Workflows**: Create self-managing systems that adapt to events
+- **Intelligent Monitoring**: AI agents that actively respond to system changes
 
 ## Compatibility
 

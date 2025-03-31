@@ -8,9 +8,10 @@ import json
 import uuid
 from typing import Any, Callable, Dict, Set
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
+from mcp.types import TextContent
 import asyncio
 
-from . import MCPCMessage
+from .models import MCPCMessage
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -173,34 +174,19 @@ class MCPCHandler:
         # Only process received data
         if direction != "received":
             return
-            
+        
         try:
             if not hasattr(data, 'root') or not hasattr(data.root, 'result'):
                 return
             
-            if not data.root.result.get("content"):
+            contents = data.root.result.get("content")
+            if not contents:
                 return
             
-            try:
-                contents = data.root.result
-                # Handle different MCP client implementations
-                if hasattr(contents, 'content'):
-                    content_list = contents.content
-                else:
-                    # Try to construct from raw data
-                    from mcp.types import CallToolResult
-                    contents = CallToolResult.model_construct(**contents)
-                    content_list = contents.content
-            except Exception as e:
-                # Silently ignore non-MCP messages
-                logger.debug(f"Error parsing MCP content: {e}")
-                return
-            
-            for content in content_list:
+            for content in contents:
                 try:
-                    # Extract text content
-                    if hasattr(content, 'text'):
-                        mcp_message = content.text
+                    mcp_message = TextContent.model_construct(**content)
+                    mcp_message = mcp_message.text
                 except Exception as e:
                     # Silently ignore non-text MCP messages
                     logger.debug(f"Error extracting text content: {e}")
@@ -209,20 +195,32 @@ class MCPCHandler:
                 try:
                     # Parse and validate as MCPC message
                     mcpc_data = json.loads(mcp_message)
-                    if not isinstance(mcpc_data, dict) or not mcpc_data.get("type") == "mcpc":
+                    mcpc_message = MCPCMessage.model_construct(**mcpc_data)
+
+                    if mcpc_message.protocol != "mcpc":
+                        logger.debug("Received MCPC message with incorrect protocol")
                         continue
                         
-                    mcpc_message = MCPCMessage.model_validate(mcpc_data)
+                    # Handle both task and server event messages
+                    if mcpc_message.type == "server_event":
+                        # Server events don't require session_id
+                        pass
+                    else:
+                        if not all([mcpc_message.session_id, mcpc_message.task_id, mcpc_message.tool_name]):
+                            logger.debug("Task message missing required fields")
+                            continue
+                            
                 except Exception as e:
                     # Silently ignore non-MCPC messages
                     logger.debug(f"Error validating MCPC message: {e}")
                     continue
 
-                if not mcpc_message.session_id:
-                    # Silently ignore messages with no session ID
+                # Only check session_id for task messages
+                if mcpc_message.type == "task" and not mcpc_message.session_id:
+                    logger.debug("Task message missing session_id")
                     continue
                 
-                logger.info(f"Processing MCPC callback: task={mcpc_message.task_id}, tool={mcpc_message.tool_name}, status={mcpc_message.status}")
+                logger.info(f"Processing MCPC callback: type={mcpc_message.type}, event={mcpc_message.event}")
             
                 # Call the user's callback function with the validated message
                 try:
@@ -232,9 +230,13 @@ class MCPCHandler:
                         self.callback_fn(mcpc_message)
                 except Exception as e:
                     logger.error(f"Error in user callback function: {e}")
+                    # Log the full message for debugging
+                    logger.debug(f"Message that caused error: {mcpc_message.model_dump_json()}")
                     
         except Exception as e:
             logger.error(f"Error in MCPC message listener: {e}")
+            # Log the full data for debugging
+            logger.debug(f"Data that caused error: {data}")
     
     def add_metadata(self, args: Dict[str, Any], session_id: str) -> Dict[str, Any]:
         """

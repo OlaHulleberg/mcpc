@@ -15,7 +15,7 @@ from typing import Any, Callable, Dict, Literal
 
 from mcp.types import TextContent, JSONRPCResponse, JSONRPCMessage
 
-from . import MCPCMessage, MCPCInformation
+from .models import MCPCMessage, MCPCInformation
 
 # Configure logging
 logger = logging.getLogger("mcpc-helpers")
@@ -92,19 +92,49 @@ class MCPCHelper:
 
     def create_message(
         self,
-        tool_name: str,
-        session_id: str,
-        task_id: str,
-        result: Any = None,
-        status: Literal["task_created", "task_update", "task_complete", "task_failed"] = "task_update"
+        type: Literal["task", "server_event"],
+        event: str,
+        session_id: str | None = None,
+        tool_name: str | None = None,
+        task_id: str | None = None,
+        result: Any = None
     ) -> MCPCMessage:
         """Create a standardized MCPC message."""
-        return MCPCMessage(
+        if type == "server_event":
+            if not session_id:
+                raise ValueError("session_id is required for server event messages")
+            return MCPCMessage(
+                session_id=session_id,
+                result=result,
+                event=event,
+                type="server_event"
+            )
+        else:
+            if not all([tool_name, session_id, task_id]):
+                raise ValueError("tool_name, session_id, and task_id are required for task messages")
+            if event not in ["created", "update", "complete", "failed"]:
+                raise ValueError("task messages must use one of: created, update, complete, failed")
+            return MCPCMessage(
+                session_id=session_id,
+                task_id=task_id,
+                tool_name=tool_name,
+                result=result,
+                event=event,
+                type="task"
+            )
+
+    def create_server_event(
+        self,
+        session_id: str,
+        result: Any,
+        event: str
+    ) -> MCPCMessage:
+        """Create a server-initiated event message."""
+        return self.create_message(
+            type="server_event",
+            event=event,
             session_id=session_id,
-            task_id=task_id,
-            tool_name=tool_name,
-            result=result,
-            status=status
+            result=result
         )
 
     async def send_direct(self, message: str) -> bool:

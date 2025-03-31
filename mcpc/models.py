@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Any
+from typing import Any, Literal
 
 from . import __version__
 
@@ -13,8 +13,9 @@ class MCPCInformation(BaseModel):
 class MCPCMessage(BaseModel):
     """A message in the MCPC protocol."""
     session_id: str
-    task_id: str
-    tool_name: str
-    result: Any | None = None
-    status: str
-    type: str = "mcpc"
+    task_id: str | None = None
+    tool_name: str | None = None
+    result: Any = None
+    event: str
+    type: Literal["task", "server_event"] = "task"  # Type of message
+    protocol: str = "mcpc"  # Protocol identifier
