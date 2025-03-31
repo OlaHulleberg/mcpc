@@ -201,11 +201,6 @@ class MCPCHandler:
                     # Extract text content
                     if hasattr(content, 'text'):
                         mcp_message = content.text
-                    else:
-                        # Try to construct from raw data
-                        from mcp.types import TextContent
-                        mcp_message = TextContent.model_construct(**content)
-                        mcp_message = mcp_message.text
                 except Exception as e:
                     # Silently ignore non-text MCP messages
                     logger.debug(f"Error extracting text content: {e}")
