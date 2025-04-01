@@ -93,6 +93,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
                 task_id=task_id,
                 result="Processing data..."
             ))
+            await asyncio.sleep(3) # Simulate processing time
             await mcpc.send(mcpc.create_message(
                 type="task",
                 event="complete",
