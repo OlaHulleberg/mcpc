@@ -6,6 +6,15 @@
 
 An extension to the MCP (Model-Context-Protocol) protocol that enables asynchronous real-time callbacks and streaming updates from MCP tools.
 
+## Compatibility Matrix
+
+| Feature                           | Status               | Notes                                               |
+| --------------------------------- | -------------------- | --------------------------------------------------- |
+| STDIO Transport                   | ✅ Implemented       | Full support for standard input/output transport    |
+| SSE Transport                     | ⚠️ Limited Support   | Standard MCP operations only, MCPC features pending |
+| MCPC Server → Standard MCP Client | ✅ Implemented       | Full backward compatibility                         |
+| Standard MCP Client → MCPC Server | ⚠️ Partially Working | Task initiation works, result streaming in progress |
+
 ## Quick Start
 
 ### Prerequisites
@@ -75,6 +84,23 @@ async def run_tool(session, tool_name, tool_args, session_id):
     # Call the tool with enhanced arguments
     return await session.call_tool(tool_name, enhanced_args)
 ```
+
+## What is MCPC?
+
+MCPC is an **extension** to the MCP protocol, not a replacement. It builds upon the existing MCP infrastructure to add real-time callback capabilities while maintaining full compatibility with standard MCP implementations.
+
+### Key Points
+
+- MCPC extends MCP, it does not replace it
+- MCP servers can optionally add MCPC support
+- MCP clients can optionally add MCPC support
+- You can mix and match MCPC-enabled and standard MCP components
+
+This means you can:
+
+- Use an MCPC-enabled server with standard MCP clients for standard MCP capabilities.
+- Use an MCPC-enabled client with standard MCP servers for standard MCP capabilities.
+- Use MCPC-enabled components on both sides for full real-time capabilities
 
 ## Why MCPC Exists
 
@@ -313,104 +339,4 @@ The `MCPCHelper` class provides additional features for complex server implement
 
 1. **Transport Options**
 
-   - Initialize with different transport types: `MCPCHelper(provider_name, transport_type="stdio")`
-   - Available transport types:
-     - `"stdio"`: Standard input/output transport (default)
-     - `"sse"`: Server-Sent Events transport (planned for future release, not yet implemented)
-
-2. **Task Management**
-
-   - `start_task()`: Run a background task with automatic thread management
-   - `check_task()`: Get the status of a running task
-   - `stop_task()`: Request a task to stop gracefully
-   - `cleanup_task()`: Remove a completed task from tracking
-
-3. **Message Handling**
-
-   - `create_message()`: Create standardized MCPC protocol messages
-   - `create_server_event()`: Shorthand for creating server event messages
-   - `send()`: Send messages through the configured transport
-
-4. **Protocol Information**
-   - `get_protocol_info()`: Return MCPC protocol compatibility information
-
-## MCPC Message Structure
-
-MCPC messages have the following structure:
-
-```python
-class MCPCMessage:
-    session_id: str      # Unique session identifier
-    task_id: str | None  # Unique task identifier (required for task messages)
-    tool_name: str | None # Name of the tool being called (required for task messages)
-    result: Any = None   # Result or update data
-    event: str          # Event type (restricted for task messages)
-    type: Literal["task", "server_event"] = "task"  # Type of message
-    protocol: str = "mcpc"  # Protocol identifier
-```
-
-### Example Server Event Message
-
-```python
-# Server-initiated Kafka notification
-server_event = mcpc.create_server_event(
-    session_id="session123",
-    result={
-        "topic": "user_updates",
-        "event": "user_created",
-        "user_id": "user456",
-        "timestamp": "2024-03-20T10:00:00Z"
-    },
-    event="notification"  # Event must be explicitly specified
-)
-```
-
-## Message Types and Events
-
-MCPC defines two types of messages with different event restrictions:
-
-### Task Messages
-
-- Type: `task`
-- Events:
-  - `created`: Initial acknowledgment when task begins
-  - `update`: Progress updates during task execution
-  - `complete`: Final result when task completes successfully
-  - `failed`: Error information when task fails
-
-### Server Event Messages
-
-- Type: `server_event`
-- Events: Any string is allowed, as they are not tied to a specific task lifecycle
-- Common examples include: `notification`, `alert`, `update`, `error`, etc.
-- **Proactive AI Responses**: Server events could trigger LLM actions:
-  - System events ("Database migration finished" → LLM verifies tables)
-  - File events ("PDF arrived" → LLM starts processing)
-  - Task results ("Analysis complete" → LLM reviews findings)
-  - State changes ("API updated" → LLM tests new endpoints)
-  - Any event that might require AI attention or action
-
-## Use Cases
-
-MCPC is ideal for:
-
-- **Interactive AI Agents**: Chat with LLMs while tasks run in the background
-- **Data Processing**: Stream progress updates during large file processing
-- **Content Generation**: Receive partial results as they're generated
-- **Long-Running Operations**: Support for tasks that run indefinitely
-- **Distributed Systems**: Coordinate asynchronous operations across services
-- **Proactive AI**: Let LLMs respond to events and take action automatically
-- **Automated Workflows**: Create self-managing systems that adapt to events
-- **Intelligent Monitoring**: AI agents that actively respond to system changes
-
-## Compatibility
-
-MCPC is designed to be fully backward compatible with the MCP protocol:
-
-- MCPC-enabled clients can communicate with standard MCP servers
-- MCPC-enabled servers can respond to standard MCP clients
-- The protocol negotiation ensures graceful fallback to standard MCP when needed
-
-## License
-
-MIT
+   - Initialize with different transport types: `
