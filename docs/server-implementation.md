@@ -1,6 +1,8 @@
 # Server Implementation Guide
 
-For implementing MCPC in your MCP servers, use the `MCPCHelper` class to handle message creation, background tasks, and progress updates.
+MCPC servers enable real-time updates, progress notifications, and asynchronous responses through your standard MCP transport - no additional transport mechanisms needed.
+
+For implementing MCPC in your MCP servers, use the `MCPCHelper` class to handle message creation, background tasks, and progress updates. The helper automatically manages bidirectional communication through your existing MCP transport while maintaining backward compatibility.
 
 ```python
 from mcp.server import Server

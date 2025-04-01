@@ -4,14 +4,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Versions](https://img.shields.io/pypi/pyversions/mcpc.svg)](https://pypi.org/project/mcpc/)
 
-An extension to the MCP (Model-Context-Protocol) protocol that enables asynchronous real-time callbacks and streaming updates from MCP tools.
+An extension to the MCP (Model-Context-Protocol) protocol that enables **two-way communication** between LLMs and tools through the already existing MCP transport - no additional transport layer needed. Provides asynchronous real-time callbacks and streaming updates while maintaining full backward compatibility.
 
 ## What is MCPC?
 
-MCPC is an **extension** to the MCP protocol, not a replacement. It builds upon the existing MCP infrastructure to add real-time callback capabilities while maintaining full compatibility with standard MCP implementations.
+MCPC is an **extension** to the MCP protocol, not a replacement. It builds upon the existing MCP infrastructure to add real-time two-way communication capabilities while maintaining full compatibility with standard MCP implementations.
 
-MCPC solves a critical limitation in LLM tool interactions: **maintaining conversational flow while running background tasks**. It enables:
+MCPC solves a critical limitation in LLM tool interactions: **enabling continuous two-way communication while running background tasks**. It enables:
 
+- Bidirectional communication between LLMs and tools using the same MCP transport
 - Continuous conversation with LLMs during tool execution
 - Real-time updates from background processes
 - Asynchronous notifications when operations complete

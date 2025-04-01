@@ -1,8 +1,10 @@
 # Getting Started with MCPC
 
+MCPC enables real-time two-way communication between LLMs and tools by leveraging your existing MCP transport - no additional connections or protocols needed. This guide will help you get started with implementing bidirectional communication in your MCP tools.
+
 ## Prerequisites
 
-MCPC extends the [MCP protocol](https://github.com/modelcontextprotocol/python-sdk), so you need to have MCP installed first.
+MCPC extends the [MCP protocol](https://github.com/modelcontextprotocol/python-sdk), so you need to have MCP installed first. Since MCPC uses your existing MCP transport layer, no additional transport setup is required.
 
 ## Installation
 

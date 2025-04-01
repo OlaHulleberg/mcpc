@@ -1,5 +1,16 @@
 # MCPC Protocol Details
 
+MCPC extends the MCP protocol while using the same underlying transport layer. This design choice ensures maximum compatibility and minimal setup overhead.
+
+## Transport Layer
+
+MCPC messages flow through the existing MCP transport (whether STDIO, SSE, or other implementations). The protocol wraps the standard MCP transport with event listeners that enable:
+
+- Server-to-client communication during task execution
+- Real-time updates and notifications
+- Asynchronous task completion signals
+  All while maintaining full backward compatibility with standard MCP implementations.
+
 ## MCPC Message Structure
 
 MCPC messages have the following structure:
