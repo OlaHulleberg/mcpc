@@ -61,8 +61,8 @@ if mcpc_supported:
 
 ```python
 # Initialize MCPC helper
-server = Server(PROVIDER_NAME)
-mcpc = MCPCHelper(PROVIDER_NAME, transport_type="stdio")
+server = Server("my-provider")
+mcpc = MCPCHelper("my-provider", transport_type="stdio")
 
 @server.call_tool()
 async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
