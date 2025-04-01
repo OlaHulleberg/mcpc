@@ -42,6 +42,13 @@ pip install mcpc
 # Initialize the MCPC handler
 mcpc_handler = MCPCHandler("my-provider")
 
+# Define your event listener function
+async def my_mcpc_listener(mcpc_message: MCPCMessage) -> None:
+    print(f"Received MCPC message: {mcpc_message}")
+    # Handle the message based on status
+    if mcpc_message.type == "task" and mcpc_message.event == "complete":
+        print(f"Task {mcpc_message.task_id} completed with result: {mcpc_message.result}")
+
 # Add your event listener for MCPC Message
 mcpc_handler.add_event_listener(my_mcpc_listener)
 
