@@ -10,8 +10,8 @@ from typing import Any, Callable, Dict, Set
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from mcp.types import TextContent
 import asyncio
-
-from .models import MCPCMessage
+from .models import MCPCMessage, MCPCInformation
+from . import __version__
 
 # Configure logger
 logger = logging.getLogger("mcpc")
@@ -30,7 +30,7 @@ class MCPCHandler:
         self.provider_name = provider_name
         self.config = config
         self.supports_mcpc = False
-        self.protocol_version = None
+        self.protocol_version = __version__
         
         # Set up logging
         log_level = config.get('log_level', logging.INFO)
@@ -186,9 +186,9 @@ class MCPCHandler:
             logger.error(f"Error processing stream data: {e}")
             logger.debug(f"Data that caused error: {data}")
     
-    async def check_mcpc_support(self, session) -> bool:
+    async def init_mcpc(self, session) -> bool:
         """
-        Check if the connected MCP server supports MCPC protocol.
+        Initialize MCPC by checking if the connected MCP server supports MCPC protocol.
         
         Args:
             session: The MCP client session
@@ -197,8 +197,14 @@ class MCPCHandler:
             bool: True if MCPC is supported, False otherwise
         """
         try:
-            # Call the MCPC information endpoint
-            result = await session.call_tool("is_mcpc_enabled", {})
+            # Create an MCPCInformation object with client information
+            client_info = MCPCInformation(
+                mcpc_version=self.protocol_version,
+                mcpc_provider=self.provider_name
+            )
+            
+            # Call the MCPC information endpoint with client information
+            result = await session.call_tool("_is_mcpc_enabled", {"mcpc_info": client_info.model_dump()})
             
             # Extract MCPC information from the result
             if result and hasattr(result, 'content') and result.content:
@@ -213,7 +219,7 @@ class MCPCHandler:
                         return False
 
                     self.supports_mcpc = mcpc_info.get("mcpc_enabled", False)
-                    self.protocol_version = mcpc_info.get("mcpc_version", None)
+                    self.protocol_version = mcpc_info.get("mcpc_version", self.protocol_version)
                     
                     if self.supports_mcpc:
                         logger.info(f"{self.provider_name} MCPC protocol v{self.protocol_version} supported")
