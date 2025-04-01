@@ -58,8 +58,7 @@ async def serve():
             async def process_data_task():
                 try:
                     # Send initial update
-                    await mcpc.send(mcpc.create_message(
-                        type="task",
+                    await mcpc.send(mcpc.create_task_event(
                         event="update",
                         tool_name="process_data",
                         session_id=session_id,
@@ -71,8 +70,7 @@ async def serve():
                     total_steps = 5
                     for step in range(1, total_steps + 1):
                         # Send progress update
-                        await mcpc.send(mcpc.create_message(
-                            type="task",
+                        await mcpc.send(mcpc.create_task_event(
                             event="update",
                             tool_name="process_data",
                             session_id=session_id,
@@ -87,8 +85,7 @@ async def serve():
                         await asyncio.sleep(1)
 
                     # Send completion message
-                    await mcpc.send(mcpc.create_message(
-                        type="task",
+                    await mcpc.send(mcpc.create_task_event(
                         event="complete",
                         tool_name="process_data",
                         session_id=session_id,
@@ -102,18 +99,13 @@ async def serve():
 
                 except Exception as e:
                     # Send error message
-                    await mcpc.send(mcpc.create_message(
-                        type="task",
+                    await mcpc.send(mcpc.create_task_event(
                         event="failed",
                         tool_name="process_data",
                         session_id=session_id,
                         task_id=task_id,
                         result=f"Error: {str(e)}"
                     ))
-
-                finally:
-                    # Clean up task
-                    mcpc.cleanup_task(task_id)
 
             # Start the background task or run it synchronously based on client support
             collected_messages = mcpc.start_task(task_id, process_data_task)
@@ -124,8 +116,7 @@ async def serve():
                 return mcpc.messages_to_text_content(collected_messages)
 
             # For MCPC clients, return immediate acknowledgment
-            response = mcpc.create_message(
-                type="task",
+            response = mcpc.create_task_event(
                 event="created",
                 tool_name="process_data",
                 session_id=session_id,
@@ -134,7 +125,7 @@ async def serve():
             )
 
             # Also return through the standard MCP channel
-            return [TextContent(type="text", text=response.model_dump_json())]
+            return mcpc.messages_to_text_content([response])
 
     # Start the server
     options = server.create_initialization_options()

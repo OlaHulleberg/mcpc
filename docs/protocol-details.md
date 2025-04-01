@@ -17,13 +17,13 @@ MCPC messages have the following structure:
 
 ```python
 class MCPCMessage:
-    session_id: str      # Unique session identifier
-    task_id: str | None  # Unique task identifier (required for task messages)
-    tool_name: str | None # Name of the tool being called (required for task messages)
-    result: Any = None   # Result or update data
-    event: str          # Event type (restricted for task messages)
-    type: Literal["task", "server_event"] = "task"  # Type of message
-    protocol: str = "mcpc"  # Protocol identifier
+    type: Literal["task", "server_event"] # Type of message
+    event: str             # Event type (restricted for task messages)
+    session_id: str | None # Unique session identifier
+    task_id: str | None    # Unique task identifier (required for task messages)
+    tool_name: str | None  # Name of the tool being called (required for task messages)
+    result: Any = None     # Result or update data
+    protocol: str = "mcpc" # Protocol identifier
 ```
 
 ## Message Types and Events
@@ -49,16 +49,15 @@ MCPC defines two types of messages with different event restrictions:
 
 ```python
 # Task progress update
-task_message = mcpc.create_message(
-    type="task",
+task_message = mcpc.create_task_event(
     event="update",
     tool_name="process_data",
     session_id="session_123",
-    task_id="task_456",
+    task_id="fe6762d0-ffe9-46b1-96e8-b1df2dcc08a9",
     result={
         "status": "Processing step 3/5",
         "progress": 60
-    }
+    },
 )
 ```
 
@@ -67,6 +66,7 @@ task_message = mcpc.create_message(
 ```python
 # Server-initiated Kafka notification
 server_event = mcpc.create_server_event(
+    event="notification",  # Event must be explicitly specified
     session_id="session123",
     result={
         "topic": "user_updates",
@@ -74,7 +74,6 @@ server_event = mcpc.create_server_event(
         "user_id": "user456",
         "timestamp": "2024-03-20T10:00:00Z"
     },
-    event="notification"  # Event must be explicitly specified
 )
 ```
 

@@ -105,6 +105,8 @@ class MCPCHelper:
                 else:
                     worker_func(*args, **kwargs)
             finally:
+                # Clean up task after completion
+                self.cleanup_task(task_id)
                 loop.close()
         
         # Create and start thread
@@ -125,8 +127,8 @@ class MCPCHelper:
             # Check if thread is still alive after timeout
             if thread.is_alive():
                 logger.warning(f"Task {task_id} timed out after {timeout} seconds")
-                self.background_tasks[task_id]["status"] = "timeout"
-                # Return any messages collected so far
+                if task_id in self.background_tasks:
+                    self.background_tasks[task_id]["status"] = "timeout"
             
             # Get collected messages
             collected = self._collected_messages.copy()
@@ -134,7 +136,7 @@ class MCPCHelper:
             return collected
         
         # For MCPC clients, return immediately
-        logger.debug(f"Returning immediately for MCPC client")
+        logger.debug("Returning immediately for MCPC client")
         return []  # Empty list indicates async operation
 
     def check_task(self, task_id: str) -> Dict[str, Any]:
@@ -171,43 +173,61 @@ class MCPCHelper:
         result: Any = None
     ) -> MCPCMessage:
         """Create a standardized MCPC message."""
+        if not event:
+            raise ValueError("event is required for all messages")
         if type == "server_event":
             if not session_id:
                 raise ValueError("session_id is required for server event messages")
-            return MCPCMessage(
+            return self.create_server_event(
+                event=event,
                 session_id=session_id,
                 result=result,
-                event=event,
-                type="server_event"
             )
         else:
             if not all([tool_name, session_id, task_id]):
                 raise ValueError("tool_name, session_id, and task_id are required for task messages")
-            if event not in ["created", "update", "complete", "failed"]:
-                raise ValueError("task messages must use one of: created, update, complete, failed")
-            return MCPCMessage(
+            return self.create_task_event(
+                event=event,
+                tool_name=tool_name,
                 session_id=session_id,
                 task_id=task_id,
-                tool_name=tool_name,
                 result=result,
-                event=event,
-                type="task"
             )
 
     def create_server_event(
         self,
+        event: str,
         session_id: str,
-        result: Any,
-        event: str
+        result: Any
     ) -> MCPCMessage:
         """Create a server-initiated event message."""
-        return self.create_message(
+        if not event:
+            raise ValueError("event is required for server event messages")
+        return MCPCMessage(
             type="server_event",
             event=event,
             session_id=session_id,
             result=result
         )
-
+    
+    def create_task_event(
+        self,
+        event: Literal["created", "update", "complete", "failed"],
+        tool_name: str,
+        session_id: str,
+        task_id: str,
+        result: Any = None
+    ) -> MCPCMessage:
+        """Create a task-initiated event message."""
+        return MCPCMessage(
+            type="task",
+            event=event,
+            session_id=session_id,
+            task_id=task_id,
+            tool_name=tool_name,
+            result=result
+        )
+    
     async def send(self, message: MCPCMessage) -> bool:
         """
         Send an MCPC message through the appropriate transport or collect it for standard MCP client.

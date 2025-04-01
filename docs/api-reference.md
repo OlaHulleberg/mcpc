@@ -36,8 +36,7 @@ The MCPC helper provides a simple API for creating and sending messages:
 mcpc = MCPCHelper("my-provider", transport_type="stdio")  # "sse" planned for future releases
 
 # Create a task message
-task_message = mcpc.create_message(
-    type="task",
+task_message = mcpc.create_task_event(
     event="update",  # one of: created, update, complete, failed
     tool_name="tool_name",
     session_id="session_123",
@@ -46,17 +45,9 @@ task_message = mcpc.create_message(
 )
 
 # Create a server event message
-server_event = mcpc.create_message(
-    type="server_event",
-    event="database_updated",
-    session_id="session_123",
-    result={"tables": ["users", "products"]}
-)
-
-# Or use the shorthand for server events
 server_event = mcpc.create_server_event(
-    session_id="session_123",
     event="database_updated",
+    session_id="session_123",
     result={"tables": ["users", "products"]}
 )
 

@@ -4,17 +4,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Versions](https://img.shields.io/pypi/pyversions/mcpc.svg)](https://pypi.org/project/mcpc/)
 
-An extension to the MCP (Model-Context-Protocol) protocol that enables **asynchronous two-way communication** between LLMs and tools through the already existing MCP transport - no additional transport layer needed. Provides asynchronous real-time callbacks and streaming updates while maintaining full backward compatibility.
+MCPC is an extension to MCP (Model-Context-Protocol) that solves a critical limitation in LLM tool interactions: **enabling continued conversations while running tools background tasks**. It facilitates **asynchronous two-way communication** between LLMs and tools through the already existing MCP transport - no additional transport layer needed, while maintaining full backward compatibility.
 
 <p align="center">
-  <img src="assets/mcp-demo_540.avif" alt="Conceptual demo of MCPC's continuous conversation flow between LLM and tools (UI not included)">
+  <img src="assets/mcpc-demo_540.avif" alt="Conceptual demo of MCPC's continuous conversation flow between LLM and tools (UI not included)">
 </p>
 
 ## What is MCPC?
 
 MCPC is an **extension** to the MCP protocol, not a replacement. It builds upon the existing MCP infrastructure to add real-time two-way communication capabilities while maintaining full compatibility with standard MCP implementations.
 
-MCPC solves a critical limitation in LLM tool interactions: **enabling continuous two-way communication while running background tasks**. It enables:
+MCPC solves a critical limitation in LLM tool interactions: **enabling continuous two-way communication while running background tasks**:
 
 - Bidirectional communication between LLMs and tools using the same MCP transport
 - Continuous conversation with LLMs during tool execution
@@ -89,8 +89,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
 
     if name == "process_data":
         async def process_data_task():
-            await mcpc.send(mcpc.create_message(
-                type="task",
+            await mcpc.send(mcpc.create_task_event(
                 event="update",
                 tool_name="process_data",
                 session_id=session_id,
@@ -98,8 +97,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
                 result="Processing data..."
             ))
             await asyncio.sleep(3) # Simulate processing time
-            await mcpc.send(mcpc.create_message(
-                type="task",
+            await mcpc.send(mcpc.create_task_event(
                 event="complete",
                 tool_name="process_data",
                 session_id=session_id,
@@ -116,8 +114,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
         return mcpc.messages_to_text_content(collected_messages)
 
     # For MCPC clients, return immediate acknowledgment
-    response = mcpc.create_message(
-        type="task",
+    response = mcpc.create_task_event(
         event="created",
         tool_name="process_data",
         session_id=session_id,
