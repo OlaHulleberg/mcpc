@@ -6,6 +6,10 @@
 
 An extension to the MCP (Model-Context-Protocol) protocol that enables **two-way communication** between LLMs and tools through the already existing MCP transport - no additional transport layer needed. Provides asynchronous real-time callbacks and streaming updates while maintaining full backward compatibility.
 
+<p align="center">
+  <img src="assets/mcp-demo_540.avif" alt="Conceptual demo of MCPC's continuous conversation flow between LLM and tools (UI not included)">
+</p>
+
 ## What is MCPC?
 
 MCPC is an **extension** to the MCP protocol, not a replacement. It builds upon the existing MCP infrastructure to add real-time two-way communication capabilities while maintaining full compatibility with standard MCP implementations.
