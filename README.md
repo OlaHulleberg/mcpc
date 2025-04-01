@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Versions](https://img.shields.io/pypi/pyversions/mcpc.svg)](https://pypi.org/project/mcpc/)
 
-An extension to the MCP (Model-Context-Protocol) protocol that enables **two-way communication** between LLMs and tools through the already existing MCP transport - no additional transport layer needed. Provides asynchronous real-time callbacks and streaming updates while maintaining full backward compatibility.
+An extension to the MCP (Model-Context-Protocol) protocol that enables **asynchronous two-way communication** between LLMs and tools through the already existing MCP transport - no additional transport layer needed. Provides asynchronous real-time callbacks and streaming updates while maintaining full backward compatibility.
 
 <p align="center">
   <img src="assets/mcp-demo_540.avif" alt="Conceptual demo of MCPC's continuous conversation flow between LLM and tools (UI not included)">
