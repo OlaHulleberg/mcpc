@@ -1,4 +1,4 @@
-## Basic Server Usage (Standard)
+## Basic Server Usage (Standard MCP SDK Server)
 
 ```python
 import sys
@@ -42,7 +42,7 @@ async def list_tools() -> List[Tool]:
 
 @server.call_tool()
 async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
-    # Standard MCP servers still have to initialize their own _mcp_init
+    # Standard MCP SDK Servers still have to initialize their own _mcp_init - unfortunately
     if name == "_mcpc_init":
         mcpc_info = arguments.get("mcpc_info", {})
         return mcpc.handle_protocol_info_request(mcpc_info)
@@ -75,7 +75,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
 
     # For standard MCP clients, return collected complete/failed messages
     if collected_messages:
-        return mcpc.messages_to_text_content(collected_messages) # Standard MCP requires results to be wrapped in TextContent
+        return mcpc.messages_to_text_content(collected_messages) # Standard MCP SDK Server requires results to be wrapped in TextContent
 
     # For MCPC clients, return immediate acknowledgment
     response = mcpc.create_task_event(
@@ -85,7 +85,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
         task_id=task_id,
         result=f"Started processing data_id={data_id}. Updates will stream in real-time."
     )
-    return mcpc.messages_to_text_content([response]) # Standard MCP requires results to be wrapped in TextContent
+    return mcpc.messages_to_text_content([response]) # Standard MCP SDK Server requires results to be wrapped in TextContent
 
 if __name__ == "__main__":
     async def start():

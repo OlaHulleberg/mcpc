@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
 For detailed documentation, please see:
 
-- [Non-FastMCP Server Guide](docs/standard-mcp-server.md) - basic usage of standard MCP Server
+- [Non-FastMCP Server Guide](docs/standard-mcp-sdk-server.md) - basic usage of standard MCP SDK Server
 - [API Reference](docs/api-reference.md) - Detailed API documentation
 - [Protocol Details](docs/protocol-details.md) - Message structure and protocol information
 - [Use Cases](docs/use-cases.md) - Example scenarios and use cases
