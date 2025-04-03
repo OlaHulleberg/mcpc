@@ -14,7 +14,7 @@ import time
 from typing import Any, Callable, Dict, Literal, List, Optional
 
 from mcp import Tool
-from mcp.types import TextContent, JSONRPCResponse, JSONRPCMessage, ListToolsRequest, ListToolsResult
+from mcp.types import TextContent, JSONRPCResponse, JSONRPCMessage
 from mcp.server import FastMCP, Server
 from .models import MCPCMessage, MCPCInformation
 # Configure logging
