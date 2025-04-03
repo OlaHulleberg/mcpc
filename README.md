@@ -111,11 +111,14 @@ def process_data(url: str) -> dict:
 
     # For standard MCP clients, return collected complete/failed messages
     if collected_messages:
-        # Keep in mind that FastMCP differs from Standard MCP here by not direct result rather than TextContent
-        # This has some implications here, in that it returns all messages as "one" item, rather than multiple
+        # Keep in mind that FastMCP differs from Standard MCP here
+        # by expecting direct result rather than TextContent
+        # It has implications in that it returns
+        # all messages as "one" item, rather than multiple
         return collected_messages
 
     # For MCPC clients, return immediate acknowledgment
+    # See comment above on why this is not [TextContent]
     return mcpc.create_task_event(
         event="created",
         tool_name="process_data",
