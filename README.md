@@ -26,12 +26,12 @@ MCPC solves a critical limitation in LLM tool interactions: **enabling continuou
 
 ### Features
 
-| Feature                           | Status             | Notes                                               |
-| --------------------------------- | ------------------ | --------------------------------------------------- |
-| STDIO Transport                   | ✅ Implemented     | Full support for standard input/output transport    |
-| SSE Transport                     | ⚠️ Limited Support | Standard MCP operations only, MCPC features pending |
-| MCPC Client → Standard MCP Server | ✅ Implemented     | Full backward compatibility                         |
-| Standard MCP Client → MCPC Server | ✅ Implemented     | Automatic fallback to synchronous results           |
+| Feature                           | Status         | Notes                                            |
+| --------------------------------- | -------------- | ------------------------------------------------ |
+| STDIO Transport                   | ✅ Implemented | Full support for standard input/output transport |
+| SSE Transport                     | ✅ Implemented | Full support for standard input/output transport |
+| MCPC Client → Standard MCP Server | ✅ Implemented | Full backward compatibility                      |
+| Standard MCP Client → MCPC Server | ✅ Implemented | Automatic fallback to synchronous results        |
 
 ### Frameworks
 
