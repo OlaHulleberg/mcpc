@@ -35,10 +35,10 @@ MCPC solves a critical limitation in LLM tool interactions: **enabling continuou
 
 ### Frameworks
 
-| Framework               | Status         | Notes                          |
-| ----------------------- | -------------- | ------------------------------ |
-| FastMCP 😎              | ✅ Implemented | Recommended                    |
-| Standard MCP SDK Server | ✅ Implemented | Works (Use FastMCP if you can) |
+| Framework                                                  | Status         | Notes                          |
+| ---------------------------------------------------------- | -------------- | ------------------------------ |
+| [FastMCP 😎](#basic-server-usage---fastmcp)                | ✅ Implemented | Recommended                    |
+| [Standard MCP SDK Server](docs/standard-mcp-sdk-server.md) | ✅ Implemented | Works (Use FastMCP if you can) |
 
 ## Quick Installation
 
