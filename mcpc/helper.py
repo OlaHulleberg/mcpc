@@ -62,16 +62,6 @@ class MCPCHelper:
             server._tool_manager.list_tools = wrapped_list_tools
         logger.debug(f"Initialized MCPC helper for provider: {self.provider_name}")
 
-    def set_client_mcpc_version(self, version: str) -> None:
-        """
-        Set the MCPC protocol version supported by the client.
-        
-        Args:
-            version: The MCPC protocol version string
-        """
-        self.client_mcpc_version = version
-        logger.info(f"Client MCPC protocol version set to: {version}")
-
     def _set_client_mcpc_info(self, client_info: MCPCInformation) -> None:
         """
         Set the MCPC protocol information received from the client.
