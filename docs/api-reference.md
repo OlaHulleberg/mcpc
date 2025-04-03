@@ -4,27 +4,20 @@
 
 The `MCPCHelper` class provides features for implementing MCPC in server applications:
 
-1. **Transport Options**
-
-   - Initialize with different transport types: `MCPCHelper(provider_name, transport_type="stdio")`
-   - Available transport types:
-     - `"stdio"`: Standard input/output transport (default)
-     - `"sse"`: Server-Sent Events transport (planned for future release)
-
-2. **Task Management**
+1. **Task Management**
 
    - `start_task()`: Run a background task with automatic thread management, with configurable timeout for standard MCP clients
    - `check_task()`: Get the status of a running task
    - `stop_task()`: Request a task to stop gracefully
    - `cleanup_task()`: Remove a completed task from tracking
 
-3. **Message Handling**
+2. **Message Handling**
 
    - `create_message()`: Create standardized MCPC protocol messages
    - `create_server_event()`: Shorthand for creating server event messages
    - `send()`: Send messages through the configured transport
 
-4. **Protocol Information**
+3. **Protocol Information**
    - `get_protocol_info()`: Return MCPC protocol compatibility information
 
 ## MCPC Messaging API
@@ -32,8 +25,9 @@ The `MCPCHelper` class provides features for implementing MCPC in server applica
 The MCPC helper provides a simple API for creating and sending messages:
 
 ```python
-# Initialize with the desired transport
-mcpc = MCPCHelper("my-provider", transport_type="stdio")  # "sse" planned for future releases
+# Supports either FastMCP or Server
+server = FastMCP("provider-name") # or Server("provider-name")
+mcpc = MCPCHelper(server)
 
 # Create a task message
 task_message = mcpc.create_task_event(

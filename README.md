@@ -69,67 +69,61 @@ if mcpc_supported:
     print(f"MCPC protocol v{mcpc_handler.protocol_version} supported")
 ```
 
-## Basic Server Usage
+## Basic Server Usage - FastMCP
 
 ```python
 # Initialize MCPC helper
-server = Server("my-provider")
-mcpc = MCPCHelper("my-provider", transport_type="stdio")
+server = FastMCP("my-provider")
+mcpc = MCPCHelper(server)
 
-@server.call_tool()
-async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
-    metadata = arguments.pop("_metadata", {})
-    session_id = metadata.get("mcpc_session_id", "default")
-    task_id = metadata.get("mcpc_task_id", str(uuid.uuid4()))
+@server.tool()
+def process_data(url: str) -> dict:
+    async def process_data_task():
+        await mcpc.send(mcpc.create_task_event(
+            event="update",
+            tool_name="process_data",
+            session_id=session_id,
+            task_id=task_id,
+            result=f"Processing {url}..."
+        ))
+        await asyncio.sleep(3) # Simulate processing time
+        await mcpc.send(mcpc.create_task_event(
+            event="complete",
+            tool_name="process_data",
+            session_id=session_id,
+            task_id=task_id,
+            result={
+                YOUR_DATA_OBJECT
+            }
+        ))
 
-    # Handle protocol information request
-    if name == "_is_mcpc_enabled":
-        client_info = arguments.get("mcpc_info")
-        return mcpc.handle_protocol_info_request(client_info)
-
-    if name == "process_data":
-        async def process_data_task():
-            await mcpc.send(mcpc.create_task_event(
-                event="update",
-                tool_name="process_data",
-                session_id=session_id,
-                task_id=task_id,
-                result="Processing data..."
-            ))
-            await asyncio.sleep(3) # Simulate processing time
-            await mcpc.send(mcpc.create_task_event(
-                event="complete",
-                tool_name="process_data",
-                session_id=session_id,
-                task_id=task_id,
-                result={
-                    YOUR_DATA_OBJECT
-                }
-            ))
-        # Start a background task
-        collected_messages = mcpc.start_task(task_id, process_data_task)
+    # Start a background task - or run synchronous if no MCPC support
+    collected_messages = mcpc.start_task(task_id, process_data_task)
 
     # For standard MCP clients, return collected complete/failed messages
     if collected_messages:
-        return mcpc.messages_to_text_content(collected_messages)
+        # Keep in mind that FastMCP differs from Standard MCP here by not direct result rather than TextContent
+        # This has some implications here, in that it returns all messages as "one" item, rather than multiple
+        return collected_messages
 
     # For MCPC clients, return immediate acknowledgment
-    response = mcpc.create_task_event(
+    return mcpc.create_task_event(
         event="created",
         tool_name="process_data",
         session_id=session_id,
         task_id=task_id,
         result=f"Started processing data_id={data_id}. Updates will stream in real-time."
     )
-    return mcpc.messages_to_text_content([response])
+
+if __name__ == "__main__":
+    asyncio.run(server.run())
 ```
 
 ## Documentation
 
 For detailed documentation, please see:
 
-- [Getting Started Guide](docs/getting-started.md) - Installation and basic usage
-- [Server Implementation](docs/server-implementation.md) - How to implement MCPC in your server
+- [Non-FastMCP Server Guide](docs/standard-mcp-server.md) - basic usage of standard MCP Server
 - [API Reference](docs/api-reference.md) - Detailed API documentation
 - [Protocol Details](docs/protocol-details.md) - Message structure and protocol information
 - [Use Cases](docs/use-cases.md) - Example scenarios and use cases

@@ -12,11 +12,12 @@ except PackageNotFoundError:
 
 from .handler import MCPCHandler
 from .helper import MCPCHelper
-from .models import MCPCMessage, MCPCInformation
+from .models import MCPCMessage, MCPCInformation, MCPCToolParameters
 
 __all__ = [
     "MCPCHandler",
     "MCPCMessage",
     "MCPCInformation",
-    "MCPCHelper"
+    "MCPCHelper",
+    "MCPCToolParameters"
 ]
