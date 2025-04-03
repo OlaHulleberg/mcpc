@@ -47,6 +47,9 @@ server_event = mcpc.create_server_event(
 
 # Send a message through the configured transport
 await mcpc.send(task_message)
+
+# Or simply yield in a .run_task()
+yield task_message
 ```
 
 ## MCPCHandler

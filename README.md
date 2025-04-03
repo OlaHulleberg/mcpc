@@ -86,9 +86,9 @@ server = FastMCP("my-provider")
 mcpc = MCPCHelper(server)
 
 @server.tool()
-def process_data(url: str) -> dict:
+async def process_data(url: str) -> dict:
     async def process_data_task():
-        await mcpc.send(mcpc.create_task_event(
+        yield mcpc.create_task_event(
             event="update",
             tool_name="process_data",
             session_id=session_id,
@@ -96,7 +96,7 @@ def process_data(url: str) -> dict:
             result=f"Processing {url}..."
         ))
         await asyncio.sleep(3) # Simulate processing time
-        await mcpc.send(mcpc.create_task_event(
+        yield mcpc.create_task_event(
             event="complete",
             tool_name="process_data",
             session_id=session_id,
@@ -104,10 +104,10 @@ def process_data(url: str) -> dict:
             result={
                 YOUR_DATA_OBJECT
             }
-        ))
+        )
 
     # Start a background task - or run synchronous if no MCPC support
-    collected_messages = mcpc.start_task(task_id, process_data_task)
+    collected_messages = await mcpc.start_task(task_id, process_data_task)
 
     # For standard MCP clients, return collected complete/failed messages
     if collected_messages:

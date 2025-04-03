@@ -6,9 +6,9 @@ Provides streamlined functionality for implementing the MCPC protocol
 in MCP servers using direct streaming capabilities.
 """
 
+import inspect
 import logging
 import sys
-import threading
 import asyncio
 import time
 from typing import Any, Callable, Dict, Literal, List, Optional
@@ -19,9 +19,6 @@ from mcp.server import FastMCP, Server
 from .models import MCPCMessage, MCPCInformation
 # Configure logging
 logger = logging.getLogger("mcpc")
-
-# Define transport types
-TransportType = Literal["stdio", "sse"]
 
 class MCPCHelper:
     """
@@ -38,8 +35,7 @@ class MCPCHelper:
         self._write_stream = sys.stdout
         self.provider_name = server.name
         self.background_tasks: Dict[str, Dict[str, Any]] = {}
-        self.client_mcpc_version: Optional[str] = None
-        self._collected_messages: List[MCPCMessage] = []        
+        self.client_mcpc_version: Optional[str] = None  
 
         # Hide mcpc tools and params from the LLM - Aplpied on FastMCP only
         def filter_mcpc_tools(tools: list[Tool]) -> list[Tool]:
@@ -73,7 +69,7 @@ class MCPCHelper:
         client_provider = client_info.mcpc_provider
         logger.info(f"Client MCPC protocol version set to: {self.client_mcpc_version}, provider: {client_provider}")
 
-    def start_task(
+    async def start_task(
         self,
         task_id: str, 
         worker_func: Callable, 
@@ -82,11 +78,11 @@ class MCPCHelper:
         timeout: float = 60.0
     ) -> List[MCPCMessage]:
         """
-        Start a task, either asynchronously (MCPC client) or synchronously (standard MCP client).
+        Start a task with a generator function that yields messages.
         
         Args:
             task_id: Unique identifier for the task
-            worker_func: The function to execute
+            worker_func: Generator function that yields MCPCMessage objects
             args: Positional arguments for the function
             kwargs: Keyword arguments for the function
             timeout: Maximum time to wait for task completion in seconds (for standard MCP only)
@@ -95,54 +91,53 @@ class MCPCHelper:
             List[MCPCMessage]: Collected messages if standard MCP client, empty list if MCPC client
         """
         kwargs = kwargs or {}
-        self._collected_messages = []  # Reset collection
-        
-        is_async = asyncio.iscoroutinefunction(worker_func)
+        collected_messages = []
+        is_async = asyncio.iscoroutinefunction(worker_func) or inspect.isasyncgenfunction(worker_func)
+
         is_standard_mcp = self.client_mcpc_version is None
         
-        # Define the thread worker that will run in all cases
-        def thread_worker():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+        async def process_messages():
             try:
                 if is_async:
-                    loop.run_until_complete(worker_func(*args, **kwargs))
+                    async for message in worker_func(*args, **kwargs):
+                        if not isinstance(message, MCPCMessage):
+                            raise ValueError("Worker function must yield MCPCMessage objects")
+                        if is_standard_mcp:
+                            collected_messages.append(message)
+                        else:
+                            await self.send(message)
                 else:
-                    worker_func(*args, **kwargs)
+                    for message in worker_func(*args, **kwargs):
+                        if not isinstance(message, MCPCMessage):
+                            raise ValueError("Worker function must return MCPCMessage objects")
+                        if is_standard_mcp:
+                            collected_messages.append(message)
+                        else:
+                            await self.send(message)
             finally:
-                # Clean up task after completion
                 self.cleanup_task(task_id)
-                loop.close()
         
-        # Create and start thread
-        thread = threading.Thread(target=thread_worker, daemon=True)
+        # Create and start task
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(process_messages())
         self.background_tasks[task_id] = {
-            "thread": thread,
+            "task": task,
             "start_time": time.time(),
             "status": "running"
         }
-        thread.start()
-        logger.debug(f"Started task {task_id} in background thread")
         
-        # For standard MCP clients, wait for completion and collect results
+        # For standard MCP clients, wait for completion and return collected results
         if is_standard_mcp:
-            logger.debug(f"Waiting for task {task_id} to complete (standard MCP client, timeout: {timeout}s)")
-            thread.join(timeout=timeout)
-            
-            # Check if thread is still alive after timeout
-            if thread.is_alive():
+            try:
+                await asyncio.wait_for(task, timeout=timeout)
+            except asyncio.TimeoutError:
                 logger.warning(f"Task {task_id} timed out after {timeout} seconds")
                 if task_id in self.background_tasks:
                     self.background_tasks[task_id]["status"] = "timeout"
-            
-            # Get collected messages
-            collected = self._collected_messages.copy()
-            self._collected_messages = []  # Clear after copying
-            return collected
+            return collected_messages
         
         # For MCPC clients, return immediately
-        logger.debug("Returning immediately for MCPC client")
-        return []  # Empty list indicates async operation
+        return []
 
     def check_task(self, task_id: str) -> Dict[str, Any]:
         """Check task status and information."""
@@ -235,7 +230,7 @@ class MCPCHelper:
     
     async def send(self, message: MCPCMessage) -> bool:
         """
-        Send an MCPC message through the appropriate transport or collect it for standard MCP client.
+        Send a single MCPCMessage directly through the transport.
         
         Args:
             message: The MCPCMessage to send
@@ -243,22 +238,13 @@ class MCPCHelper:
         Returns:
             bool: Success status
         """
-        # Ensure message has required fields
-        if message.type == "task" and not all([message.session_id, message.task_id, message.tool_name]):
-            raise ValueError("Task messages must include session_id, task_id, and tool_name")
-        elif message.type == "server_event" and not message.session_id:
-            raise ValueError("Server event messages must include session_id")
-            
         try:
-            # For standard MCP clients, collect messages instead of sending
-            if self.client_mcpc_version is None:
-                # Only collect complete messages for task type
-                if message.type == "task" and (message.event == "complete" or message.event == "failed"):
-                    self._collected_messages.append(message)
-                    logger.debug(f"Collected {message.event} message for standard MCP client")
-                return True
-            
-            # For MCPC clients, send as normal
+            # Ensure message has required fields
+            if message.type == "task" and not all([message.session_id, message.task_id, message.tool_name]):
+                raise ValueError("Task messages must include session_id, task_id, and tool_name")
+            elif message.type == "server_event" and not message.session_id:
+                raise ValueError("Server event messages must include session_id")
+
             # Convert message to JSON string
             message_json = message.model_dump_json()
             
@@ -278,7 +264,7 @@ class MCPCHelper:
             # Route to the appropriate transport
             return await self._send_direct(json_message)
         except Exception as e:
-            logger.error(f"Error preparing message for send: {e}")
+            logger.error(f"Error sending direct message: {e}")
             return False
 
     async def _send_direct(self, message: JSONRPCMessage) -> bool:
