@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcpc"
-version = "0.2.4"
+version = "0.2.5"
 description = "MCP Callback Protocol extension for enabling asynchronous tool callbacks and streaming updates from MCP clients"
 readme = "README.md"
 requires-python = ">=3.12"
