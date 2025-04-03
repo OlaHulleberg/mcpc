@@ -111,7 +111,7 @@ def process_data(url: str) -> dict:
 
     # For standard MCP clients, return collected complete/failed messages
     if collected_messages:
-        # Keep in mind that FastMCP differs from Standard MCP here
+        # Keep in mind that FastMCP differs from Standard MCP
         # by expecting direct result rather than TextContent
         # It has implications in that it returns
         # all messages as "one" item, rather than multiple
