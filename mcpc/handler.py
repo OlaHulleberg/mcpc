@@ -9,8 +9,9 @@ import uuid
 from typing import Any, Callable, Dict, Set
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from mcp.types import TextContent
+from mcp import ClientSession
 import asyncio
-from .models import MCPCMessage, MCPCInformation
+from .models import MCPCMessage, MCPCInformation, MCPCToolParameters
 from . import __version__
 
 # Configure logger
@@ -27,6 +28,7 @@ class MCPCHandler:
             provider_name: Name of the MCP provider
             config: Additional configuration options
         """
+        self._session: ClientSession | None = None
         self.provider_name = provider_name
         self.config = config
         self.supports_mcpc = False
@@ -83,6 +85,8 @@ class MCPCHandler:
             
             # Fire off the notification without waiting
             asyncio.create_task(notify_listener())
+            self._session._handle_incoming
+
     
     async def wrap_streams(self, reader, writer):
         """
@@ -186,7 +190,7 @@ class MCPCHandler:
             logger.error(f"Error processing stream data: {e}")
             logger.debug(f"Data that caused error: {data}")
     
-    async def init_mcpc(self, session) -> bool:
+    async def init_mcpc(self, session: ClientSession) -> bool:
         """
         Initialize MCPC by checking if the connected MCP server supports MCPC protocol.
         
@@ -197,6 +201,7 @@ class MCPCHandler:
             bool: True if MCPC is supported, False otherwise
         """
         try:
+            self._session = session
             # Create an MCPCInformation object with client information
             client_info = MCPCInformation(
                 mcpc_version=self.protocol_version,
@@ -204,7 +209,7 @@ class MCPCHandler:
             )
             
             # Call the MCPC information endpoint with client information
-            result = await session.call_tool("_is_mcpc_enabled", {"mcpc_info": client_info.model_dump()})
+            result = await session.call_tool("_mcpc_init", {"mcpc_info": client_info.model_dump()})
             
             # Extract MCPC information from the result
             if result and hasattr(result, 'content') and result.content:
@@ -246,13 +251,11 @@ class MCPCHandler:
             
         args_copy = args.copy() if args else {}
         task_id = str(uuid.uuid4())
-        
-        # Add MCPC session info to arguments
-        if "_metadata" not in args_copy:
-            args_copy["_metadata"] = {}
-            
-        args_copy["_metadata"]["mcpc_session_id"] = session_id
-        args_copy["_metadata"]["mcpc_task_id"] = task_id
+
+        args_copy["mcpc_params"] = MCPCToolParameters(
+            session_id=session_id,
+            task_id=task_id
+        )
         
         logger.debug(f"Added MCPC metadata: session={session_id}, task={task_id}")
         return args_copy 

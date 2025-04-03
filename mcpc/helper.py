@@ -7,16 +7,16 @@ in MCP servers using direct streaming capabilities.
 """
 
 import logging
+import sys
 import threading
 import asyncio
-import sys
 import time
 from typing import Any, Callable, Dict, Literal, List, Optional
 
+from mcp import Tool
 from mcp.types import TextContent, JSONRPCResponse, JSONRPCMessage
-
+from mcp.server import FastMCP, Server
 from .models import MCPCMessage, MCPCInformation
-
 # Configure logging
 logger = logging.getLogger("mcpc")
 
@@ -28,34 +28,39 @@ class MCPCHelper:
     Streamlined helper class for MCPC protocol implementation.
     """
     
-    def __init__(self, provider_name: str, transport_type: TransportType):
+    def __init__(self, server: Server | FastMCP):
         """
         Initialize an MCPC helper.
         
         Args:
-            provider_name: Name of the provider
-            transport_type: Transport method to use for sending messages ("stdio" or "sse")
+            server: MCP server instance
         """
-        self.provider_name = provider_name
-        self.transport_type = transport_type
+        self._write_stream = sys.stdout
+        self.provider_name = server.name
         self.background_tasks: Dict[str, Dict[str, Any]] = {}
         self.client_mcpc_version: Optional[str] = None
-        self._collected_messages: List[MCPCMessage] = []
-        logger.debug(f"Initialized MCPC helper for provider: {provider_name} using {transport_type} transport")
+        self._collected_messages: List[MCPCMessage] = []        
 
-        # TODO: Implement SSE transport
-        if self.transport_type == "sse":
-            raise NotImplementedError("SSE transport is not yet implemented")
+        # Hide mcpc tools and params from the LLM - Aplpied on FastMCP only
+        def filter_mcpc_tools(tools: list[Tool]) -> list[Tool]:
+            filtered_tools = [tool for tool in tools if tool.name != "_mcpc_init"]
+            for tool in filtered_tools:
+                params = tool.parameters if hasattr(tool, 'parameters') else tool.inputSchema
+                params['properties'] = {k: v for k, v in params.get('properties', {}).items() if k != "mcpc_params"}
+            return filtered_tools
 
-    def set_client_mcpc_version(self, version: str) -> None:
-        """
-        Set the MCPC protocol version supported by the client.
-        
-        Args:
-            version: The MCPC protocol version string
-        """
-        self.client_mcpc_version = version
-        logger.info(f"Client MCPC protocol version set to: {version}")
+        # FastMCP lets us register tools dynamically 😍
+        if isinstance(server, FastMCP):
+            @server.tool()
+            async def _mcpc_init(mcpc_info: dict):
+                return self.handle_protocol_info_request(mcpc_info)
+            
+            original_list_tools = server._tool_manager.list_tools
+            def wrapped_list_tools():
+                tools = original_list_tools()
+                return filter_mcpc_tools(tools)
+            server._tool_manager.list_tools = wrapped_list_tools
+        logger.debug(f"Initialized MCPC helper for provider: {self.provider_name}")
 
     def _set_client_mcpc_info(self, client_info: MCPCInformation) -> None:
         """
@@ -271,13 +276,7 @@ class MCPCHelper:
             json_message = JSONRPCMessage(jsonrpc_response)
             
             # Route to the appropriate transport
-            if self.transport_type == "stdio":
-                return await self._send_direct(json_message)
-            elif self.transport_type == "sse":
-                raise NotImplementedError("SSE transport is not yet implemented")
-            else:
-                raise ValueError(f"Unsupported transport type: {self.transport_type}")
-            
+            return await self._send_direct(json_message)
         except Exception as e:
             logger.error(f"Error preparing message for send: {e}")
             return False
@@ -295,19 +294,14 @@ class MCPCHelper:
         try:
             # Write to stdout and flush
             serialized = message.model_dump_json()
-            sys.stdout.write(serialized + "\n")
-            sys.stdout.flush()
-            
+            self._write_stream.write(f"{serialized}\n")
+            self._write_stream.flush()
             logger.debug(f"Sent direct message: {serialized[:100]}...")
             return True
             
         except Exception as e:
             logger.error(f"Error sending direct message: {e}")
             return False
-
-    def get_protocol_info(self) -> MCPCInformation:
-        """Get MCPC protocol information."""
-        return MCPCInformation(mcpc_provider=self.provider_name)
         
     def messages_to_text_content(self, messages: List[MCPCMessage]) -> List[TextContent]:
         """
@@ -319,13 +313,11 @@ class MCPCHelper:
         Returns:
             List[TextContent]: A list of TextContent objects containing serialized messages
         """
-        result = []
-        for message in messages:
-            # Convert message to JSON string
-            message_json = message.model_dump_json()
-            # Create TextContent
-            result.append(TextContent(type="text", text=message_json))
-        return result
+        return [TextContent(type="text", text=message.model_dump_json()) for message in messages]
+
+    def get_protocol_info(self) -> MCPCInformation:
+        """Get MCPC protocol information."""
+        return MCPCInformation(mcpc_provider=self.provider_name)
         
     def handle_protocol_info_request(self, client_info: dict) -> List[TextContent]:
         """
