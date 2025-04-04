@@ -85,47 +85,45 @@ if mcpc_supported:
 server = FastMCP("my-provider")
 mcpc = MCPCHelper(server)
 
+# Don't worry about the mcpc_params, as the MCPCHelper will hide it from the client
 @server.tool()
-async def process_data(url: str) -> dict:
+async def process_data(url: str, mcpc_params: MCPCToolParameters = MCPCToolParameters()) -> dict:
+    data_id = str(uuid.uuid4())
     async def process_data_task():
         yield mcpc.create_task_event(
             event="update",
             tool_name="process_data",
-            session_id=session_id,
-            task_id=task_id,
-            result=f"Processing {url}..."
-        ))
+            session_id=mcpc_params.session_id,
+            task_id=mcpc_params.task_id,
+            result=f"Processing {url}...",
+        )
         await asyncio.sleep(3) # Simulate processing time
         yield mcpc.create_task_event(
             event="complete",
             tool_name="process_data",
-            session_id=session_id,
-            task_id=task_id,
+            session_id=mcpc_params.session_id,
+            task_id=mcpc_params.task_id,
             result={
-                YOUR_DATA_OBJECT
-            }
+                "data_id": data_id,
+                "processed_data": "Processed data. No issues.",
+            },
         )
 
     # Start a background task - or run synchronous if no MCPC support
-    collected_messages = await mcpc.start_task(task_id, process_data_task)
+    collected_messages = await mcpc.start_task(mcpc_params.task_id, process_data_task)
 
     # For standard MCP clients, return collected complete/failed messages
     if collected_messages:
-        # Keep in mind that FastMCP differs from Standard MCP
-        # by expecting direct result rather than TextContent
-        # It has implications in that it returns
-        # all messages as "one" item, rather than multiple
-        return collected_messages
+        return mcpc.messages_to_text_content(collected_messages)
 
     # For MCPC clients, return immediate acknowledgment
-    # See comment above on why this is not [TextContent]
-    return mcpc.create_task_event(
+    return mcpc.messages_to_text_content([mcpc.create_task_event(
         event="created",
         tool_name="process_data",
-        session_id=session_id,
-        task_id=task_id,
-        result=f"Started processing data_id={data_id}. Updates will stream in real-time."
-    )
+        session_id=mcpc_params.session_id,
+        task_id=mcpc_params.task_id,
+        result=f"Started processing data_id={data_id}. Updates will stream in real-time.",
+    )])
 
 if __name__ == "__main__":
     asyncio.run(server.run())

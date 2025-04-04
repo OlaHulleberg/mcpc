@@ -57,7 +57,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
                 tool_name="process_data",
                 session_id=mcpc_params.session_id,
                 task_id=mcpc_params.task_id,
-                result="Processing data..."
+                result="Processing data...",
             )
             await asyncio.sleep(3) # Simulate processing time
             yield mcpc.create_task_event(
@@ -67,8 +67,8 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
                 task_id=mcpc_params.task_id,
                 result={
                     "data_id": data_id,
-                    "processed_data": "Processed data"
-                }
+                    "processed_data": "Processed data",
+                },
             )
         # Start a background task
         collected_messages = await mcpc.start_task(mcpc_params.task_id, process_data_task)
@@ -83,7 +83,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
         tool_name="process_data",
         session_id=session_id,
         task_id=task_id,
-        result=f"Started processing data_id={data_id}. Updates will stream in real-time."
+        result=f"Started processing data_id={data_id}. Updates will stream in real-time.",
     )
     return mcpc.messages_to_text_content([response]) # Standard MCP SDK Server requires results to be wrapped in TextContent
 
