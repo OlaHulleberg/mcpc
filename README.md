@@ -87,7 +87,7 @@ mcpc = MCPCHelper(server)
 
 # Don't worry about the mcpc_params, as the MCPCHelper will hide it from the client
 @server.tool()
-async def process_data(url: str, mcpc_params: MCPCToolParameters = MCPCToolParameters()) -> dict:
+async def process_data(url: str, mcpc_params: MCPCToolParameters = MCPCToolParameters()) -> List[TextContent]:
     data_id = str(uuid.uuid4())
     async def process_data_task():
         yield mcpc.create_task_event(
